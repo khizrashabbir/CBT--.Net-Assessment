@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="KoperasiTentera.API/KoperasiTentera.API.csproj" />
+  <Project Path="KoperasiTentera.Application.Tests/KoperasiTentera.Application.Tests.csproj" />
+  <Project Path="KoperasiTentera.Application/KoperasiTentera.Application.csproj" />
+  <Project Path="KoperasiTentera.Domain/KoperasiTentera.Domain.csproj" />
+  <Project Path="KoperasiTentera.Infrastructure/KoperasiTentera.Infrastructure.csproj" />
+</Solution>

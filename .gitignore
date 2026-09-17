@@ -1,0 +1,16 @@
+## .NET build artifacts
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+.vs/
+
+## Rider / VS Code
+.idea/
+*.DotSettings.user
+
+## Local overrides (never commit real secrets/connection strings)
+appsettings.*.local.json
+appsettings.Development.json

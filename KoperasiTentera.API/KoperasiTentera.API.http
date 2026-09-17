@@ -1,0 +1,227 @@
+@KoperasiTentera.API_HostAddress = http://localhost:5199
+@baseUrl = {{KoperasiTentera.API_HostAddress}}/api/v1
+@contentType = application/json
+
+### =========================================================================
+### Flow A — New Customer Registration (happy path)
+### =========================================================================
+
+### 1. IC lookup - brand new IC (expect NotFound)
+POST {{baseUrl}}/auth/ic-lookup
+Content-Type: {{contentType}}
+
+{
+  "icNumber": "990101011234"
+}
+
+### 2. Start registration (creates customer + auto-issues mobile OTP)
+# @name registrationStart
+POST {{baseUrl}}/registration/start
+Content-Type: {{contentType}}
+
+{
+  "fullName": "Ahmad Bin Ismail",
+  "icNumber": "990101011234",
+  "mobileNumber": "+60123456789",
+  "email": "ahmad@example.com"
+}
+
+### 2b. Duplicate IC -> 409 ACCOUNT_ALREADY_EXISTS
+POST {{baseUrl}}/registration/start
+Content-Type: {{contentType}}
+
+{
+  "fullName": "Duplicate",
+  "icNumber": "990101011234",
+  "mobileNumber": "+60123456789",
+  "email": "dup@example.com"
+}
+
+### 3. Verify mobile OTP
+# Use the customerId + mobileOtpCode returned from step 2 (Development-only field)
+POST {{baseUrl}}/otp/verify
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "otpType": "Mobile",
+  "code": "{{registrationStart.response.body.data.mobileOtpCode}}"
+}
+
+### 3b. Wrong OTP -> INCORRECT_OTP (repeat 3x, then 4th call -> OTP_MAX_ATTEMPTS)
+POST {{baseUrl}}/otp/verify
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "otpType": "Mobile",
+  "code": "0000"
+}
+
+### 4. Send email OTP
+# @name sendEmailOtp
+POST {{baseUrl}}/otp/send
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "otpType": "Email"
+}
+
+### 4b. Resend immediately -> RESEND_NOT_ALLOWED (120s cooldown)
+POST {{baseUrl}}/otp/send
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "otpType": "Email"
+}
+
+### 5. Verify email OTP
+POST {{baseUrl}}/otp/verify
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "otpType": "Email",
+  "code": "{{sendEmailOtp.response.body.data.otpCode}}"
+}
+
+### 6. Get active privacy policy
+GET {{baseUrl}}/privacy-policy
+
+### 7. Accept privacy policy
+POST {{baseUrl}}/registration/accept-policy
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}"
+}
+
+### 8. PIN mismatch -> UNMATCHED_PIN
+POST {{baseUrl}}/registration/create-pin
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "pin": "123456",
+  "confirmPin": "654321"
+}
+
+### 9. Create PIN (matching)
+POST {{baseUrl}}/registration/create-pin
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "pin": "123456",
+  "confirmPin": "123456"
+}
+
+### 10. Biometric preference -> completes onboarding (status: Active)
+POST {{baseUrl}}/registration/biometric
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{registrationStart.response.body.data.customerId}}",
+  "enable": true
+}
+
+### 11. Home dashboard
+GET {{baseUrl}}/home/{{registrationStart.response.body.data.customerId}}
+
+### 12. PIN login
+POST {{baseUrl}}/auth/pin-login
+Content-Type: {{contentType}}
+
+{
+  "icNumber": "990101011234",
+  "pin": "123456"
+}
+
+### =========================================================================
+### Flow B — Migrate Existing User (seeded legacy customer: Mariam Abdul Rashid)
+### =========================================================================
+
+### 13. IC lookup for legacy user -> ExistingUserNotMigrated + masked contacts
+POST {{baseUrl}}/auth/ic-lookup
+Content-Type: {{contentType}}
+
+{
+  "icNumber": "880214566831"
+}
+
+### 14. Start migration (masked mobile/email + auto-issued mobile OTP)
+# @name migrationStart
+POST {{baseUrl}}/migration/start
+Content-Type: {{contentType}}
+
+{
+  "icNumber": "880214566831"
+}
+
+### 15. Verify mobile OTP
+POST {{baseUrl}}/otp/verify
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{migrationStart.response.body.data.customerId}}",
+  "otpType": "Mobile",
+  "code": "{{migrationStart.response.body.data.mobileOtpCode}}"
+}
+
+### 16. Change email address (before verifying email OTP)
+# @name changeEmail
+POST {{baseUrl}}/migration/change-email
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{migrationStart.response.body.data.customerId}}",
+  "newEmail": "mariam.new@example.com"
+}
+
+### 17. Verify email OTP (sent to the new email)
+POST {{baseUrl}}/otp/verify
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{migrationStart.response.body.data.customerId}}",
+  "otpType": "Email",
+  "code": "{{changeEmail.response.body.data.emailOtpCode}}"
+}
+
+### 18. Accept privacy policy
+POST {{baseUrl}}/registration/accept-policy
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{migrationStart.response.body.data.customerId}}"
+}
+
+### 19. Create PIN
+POST {{baseUrl}}/registration/create-pin
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{migrationStart.response.body.data.customerId}}",
+  "pin": "654321",
+  "confirmPin": "654321"
+}
+
+### 20. Biometric preference -> completes migration (status: Active)
+POST {{baseUrl}}/registration/biometric
+Content-Type: {{contentType}}
+
+{
+  "customerId": "{{migrationStart.response.body.data.customerId}}",
+  "enable": false
+}
+
+### 21. PIN login as the now-migrated user
+POST {{baseUrl}}/auth/pin-login
+Content-Type: {{contentType}}
+
+{
+  "icNumber": "880214566831",
+  "pin": "654321"
+}

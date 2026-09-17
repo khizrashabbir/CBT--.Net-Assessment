@@ -1,0 +1,12 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "_comment": "Copy this file to appsettings.Development.json (git-ignored) and fill in the real password for your local SQL Server instance. Never commit real credentials.",
+    "DefaultConnection": "Data Source=localhost,1433;Initial Catalog=KoperasiTenteraDb;User ID=sa;Password=******;TrustServerCertificate=True;MultipleActiveResultSets=True"
+  }
+}
